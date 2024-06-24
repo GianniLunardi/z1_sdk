@@ -1,4 +1,7 @@
+#include <iostream>
 #include "unitree_arm_sdk/control/unitreeArm.h"
+
+using namespace std;
 
 int main()
 {

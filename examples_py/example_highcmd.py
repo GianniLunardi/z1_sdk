@@ -1,8 +1,8 @@
-import sys
-sys.path.append("../lib")
 import unitree_arm_interface
 import time
 import numpy as np
+
+# add the PYTHONPATH for the unitree_arm_interface
 
 print("Press ctrl+\ to quit process.")
 
@@ -23,7 +23,9 @@ for i in range(0, 1000):
 arm.labelRun("forward")
 gripper_pos = 0.0
 jnt_speed = 2.0
-arm.MoveJ(np.array([0.5,0.1,0.1,0.5,-0.2,0.5]), gripper_pos, jnt_speed)
+print("[Before] ", arm.lowstate.getQ())
+arm.MoveJ(np.array([0.,0.,0.,0.2, 0.,0.3]), gripper_pos, jnt_speed)
+print("[After] ", arm.lowstate.getQ())
 gripper_pos = -1.0
 cartesian_speed = 0.5
 arm.MoveL(np.array([0,0,0,0.45,-0.2,0.2]), gripper_pos, cartesian_speed)
