@@ -35,11 +35,17 @@ int main(int argc, char **argv)
     double dt = arm._ctrlComp->dt;
     double n_pre = 1000;
     int bang_cycles = 3;
-    int T_bang = 500;
+    // double a_bang = 5;
+    double v_max = 3.0;
+    int T_bang = 500; //v_max / a_bang / dt;
     int n_cycle = T_bang * 4;
+    // cout << "Bang duration: " << T_bang << " steps" << endl;
     double a_bang = 1;
     double joint_delta = a_bang * pow(T_bang * dt, 2);
     cout << "Joint delta: " << joint_delta << " rad" << endl;
+    // double joint_delta = 1.;
+    // double a_bang = joint_delta / pow(T_bang * dt, 2);
+    // cout << "Acceleration: " << a_bang << " rad/s^2" << endl;
 
     Vec6 q_init, q_arm_up, q_per_joint;
     q_init = arm.lowstate->getQ();
@@ -56,7 +62,7 @@ int main(int argc, char **argv)
     // Replicate the acceleration profile for number of cycle
     VecX a = a_cycle.replicate(bang_cycles, 1);
 
-    string filename_log =  "../data/state_log_" + to_string(j) + ".csv";
+    string filename_log =  "../data_bang/state_log_" + to_string(j) + ".csv";
     ofstream state_log(filename_log);
 
     // 2) Move arm to initial position and block it
