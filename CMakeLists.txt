@@ -14,6 +14,7 @@ set(EXAMPLES_FILES
     examples/lowcmd_development.cpp
     examples/lowcmd_multirobots.cpp
     examples/bang_ctrl.cpp
+    examples/bang_lowcmd.cpp
 )
 
 foreach(EXAMPLE_FILE IN LISTS EXAMPLES_FILES)
