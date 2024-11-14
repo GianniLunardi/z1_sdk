@@ -1,3 +1,5 @@
+import sys
+sys.path.append("../lib")
 import unitree_arm_interface
 import time
 import numpy as np

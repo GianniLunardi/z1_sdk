@@ -8,6 +8,7 @@ import scipy.signal as signal
 from scipy.fftpack import fft
 from urdf_parser_py.urdf import URDF
 import adam
+sys.path.append("../lib")
 import unitree_arm_interface
 import pinocchio as pin 
 
@@ -22,7 +23,7 @@ if j < 0 or j > 5:
     print('Invalid joint index. Please provide a joint index between 0 and 5.')
     sys.exit(1)
 
-urdf_name = '../z1.urdf'
+urdf_name = '../z1_description/urdf/z1.urdf'
 robot = URDF.from_xml_file(urdf_name)
 
 arm =  unitree_arm_interface.ArmInterface(hasGripper = True)

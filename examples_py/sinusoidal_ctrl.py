@@ -1,8 +1,9 @@
+import sys
+sys.path.append("../lib")
 import time 
 import numpy as np
 import unitree_arm_interface
 import matplotlib.pyplot as plt
-from orc.utils import plot_utils
 
 
 np.set_printoptions(precision=4, suppress=True)
@@ -76,7 +77,7 @@ arm.loopOff()
 # 5) Plot the resulting trajectories 
 BOUNDS_BOOL = 1
 t = np.linspace(0, dt*n, n)
-fig, ax = plot_utils.create_empty_figure(3, 2)
+fig, ax = plt.subplot(3, 2, sharex=True)
 ax = ax.reshape(6)
 for j in range(6):
     ax[j].plot(t, q_log[:, j], label='q' + str(j))
@@ -87,7 +88,7 @@ for j in range(6):
     ax[j].set_ylabel(f'q{j} (rad)')
     ax[j].set_xlabel('Time (s)')
 
-fig, ax = plot_utils.create_empty_figure(3, 2)
+fig, ax = plt.subplot(3, 2, sharex=True)
 ax = ax.reshape(6)
 for j in range(6):
     ax[j].plot(t, v_log[:, j], label='v' + str(j))
