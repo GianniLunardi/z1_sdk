@@ -8,7 +8,7 @@ robot_urdf = description_dir + '/urdf/z1.urdf'
 frame_name = 'gripperMover'
 urdf_name = 'z1'
 
-dt = 0.005
+dt = 0.01
 
 tol_x = 5e-3               # state -4
 tol_tau = 1e-6             # torque

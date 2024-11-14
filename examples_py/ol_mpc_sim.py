@@ -7,6 +7,7 @@ from casadi_mpc.ocp import NaiveOCP
 
 
 model = Z1Model()
+nq = model.nq
 model.ee_ref = ee_ref
 ocp = NaiveOCP(model, obstacles)
 opti = ocp.opti
@@ -22,14 +23,13 @@ opts = {
         }
 opti.solver('ipopt', opts)  
 
-# q0 = np.zeros(model.nq)
+q0 = np.array([0., 0.26178, -0.26178, 0., 0., 0.])
 x0 = np.zeros(model.nx)
-
+x0[:nq] = q0
 
 # Initial guess
 print('\n', '*'*5, 'WARM START', '*'*5, '\n')
 N = params.N
-nq = model.nq
 opti.set_value(ocp.x_init, x0)
 for k in range(N):
     opti.set_initial(ocp.X[k], x0)
@@ -68,15 +68,13 @@ for i in range(params.n_step):
 
     try:
         sol = opti.solve()
-        xg = np.array([sol.value(ocp.X[k]) for k in range(params.N + 1)])
-        ug = np.array([sol.value(ocp.U[k]) for k in range(params.N)])
-        xg, ug = np.roll(xg, -1, axis=0), np.roll(ug, -1, axis=0)
-        xg[-1] = xg[-2]
-        ug[-1] = ug[-2]
     except:
         sol = opti.debug
-        print(sol)
-        break
+    xg = np.array([sol.value(ocp.X[k]) for k in range(params.N + 1)])
+    ug = np.array([sol.value(ocp.U[k]) for k in range(params.N)])
+    xg, ug = np.roll(xg, -1, axis=0), np.roll(ug, -1, axis=0)
+    xg[-1] = xg[-2]
+    ug[-1] = ug[-2]
 
     end_time = time.time()
     rviz.display(xg[0][:nq])

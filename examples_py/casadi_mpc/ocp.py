@@ -24,7 +24,7 @@ class NaiveOCP:
             U += [opti.variable(model.nu)]
 
         opti.subject_to(X[0] == x_init)
-        Q = 1e2 * np.eye(3)
+        Q = 5e2 * np.eye(3)
         R = 5e-3 * np.eye(self.model.nu)
         ee_ref = model.ee_ref
         dist_b = []
@@ -90,7 +90,7 @@ class NaiveOCP:
             'ipopt.constr_viol_tol': 1e-4,
             'ipopt.compl_inf_tol': 1e-4,
             'ipopt.hessian_approximation': 'limited-memory',
-            'ipopt.max_iter': 50,
+            'ipopt.max_iter': 7,
             'ipopt.sb': 'yes'
         }
 
