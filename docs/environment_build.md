@@ -19,3 +19,8 @@ curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo ap
 sudo apt update
 sudo apt install ros-noetic-desktop-full -y
 ```
+- add the source of ROS to the bashrc
+```
+echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```

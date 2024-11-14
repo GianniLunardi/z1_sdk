@@ -1,7 +1,7 @@
 # ROS simulation
 
 ## Preparation
-- create a folder `unitree_ws/src` for your workspace, inside the folder clone the `unitree_ros` repo
+- creates a folder `unitree_ws/src` for your workspace, inside the folder clone the `unitree_ros` repo
 ```
 git clone https://github.com/unitreerobotics/unitree_ros.git
 ```
@@ -28,7 +28,20 @@ cd z1_sdk && mkdir build && cmake .. && make
 ```
 
 ## Simulation
-* open three terminals
-  1. roslaunch
-  2. sim_ctrl
-  3. what you want from the SDK
+- open three terminals
+  1. in the first one, source the `unitree_ws` setup and launch the gazebo simulator
+      ```
+      source unitree_ws/devel/setup.bash
+      roslaunch unitree_gazebo z1.launch
+      ```
+  2. in the second, launch the program `z1_ctrl` from the `z1_controller` folder (NOTE: the default ROS setup must be sourced)
+      ```
+      source /opt/ros/noetic/setup.bash
+      cd unitree_ws/src/z1_controller/build
+      ./z1_ctrl
+      ```
+  3. on the last terminal, run one of the programs (either from c++ or python) inside the SDK, for example run `highcmd_development`:
+      ```
+      cd unitree_ws/src/z1_sdk/build
+      ./highcmd_development
+      ```
