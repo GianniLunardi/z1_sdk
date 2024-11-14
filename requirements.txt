@@ -17,6 +17,7 @@ Cython==3.0.9
 decorator==5.1.1
 distro==1.9.0
 eigenpy==3.4.0
+example-robot-data==4.1.0
 executing==2.0.1
 filelock==3.13.1
 fonttools==4.50.0
@@ -40,6 +41,7 @@ ninja==1.11.1.1
 numpy==1.24.4
 opencv-python==4.10.0.84
 packaging==24.0
+pandas==2.0.3
 parso==0.8.3
 pexpect==4.9.0
 pickleshare==0.7.5
@@ -54,6 +56,7 @@ Pygments==2.17.2
 pyngrok==7.1.5
 pyparsing==3.1.2
 python-dateutil==2.9.0.post0
+pytz==2024.2
 PyYAML==6.0.1
 pyzmq==25.1.2
 scikit-build==0.17.6
@@ -68,6 +71,7 @@ tornado==6.4
 tqdm==4.66.4
 traitlets==5.14.2
 typing_extensions==4.10.0
+tzdata==2024.2
 u-msgpack-python==2.8.0
 urdf-parser-py==0.0.4
 wcwidth==0.2.13
