@@ -4,3 +4,4 @@ test
 *.npz
 *.csv
 *.so
+__pycache__
