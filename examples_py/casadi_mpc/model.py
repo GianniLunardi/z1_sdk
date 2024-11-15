@@ -3,15 +3,13 @@ import casadi as cs
 from urdf_parser_py.urdf import URDF
 import adam
 from adam.casadi import KinDynComputations
-from acados_template import AcadosModel
 from . import z1_conf as params
 
 class Z1Model:
     def __init__(self):
-        self.amodel = AcadosModel()
         # Robot dynamics with Adam (IIT)
         robot = URDF.from_xml_file(params.robot_urdf)
-        n_dofs = 6
+        n_dofs = params.n_dofs
         robot_joints = robot.joints[1:n_dofs+1] 
         joint_names = [joint.name for joint in robot_joints]
         kin_dyn = KinDynComputations(params.robot_urdf, joint_names, robot.get_root())        
@@ -22,7 +20,6 @@ class Z1Model:
         self.fk = kin_dyn.forward_kinematics_fun(params.frame_name)     # Forward kinematics
         nq = len(joint_names)
 
-        self.amodel.name = params.urdf_name
         self.x = cs.MX.sym("x", nq * 2)
         self.x_dot = cs.MX.sym("x_dot", nq * 2)
         self.u = cs.MX.sym("u", nq)
@@ -34,17 +31,12 @@ class Z1Model:
         ) 
         self.f_fun = cs.Function('f', [self.x, self.u], [self.f_disc])
             
-        self.amodel.x = self.x
-        self.amodel.u = self.u
-        self.amodel.disc_dyn_expr = self.f_disc
-        self.amodel.p = self.p
-
-        self.nx = self.amodel.x.size()[0]
-        self.nu = self.amodel.u.size()[0]
+        self.nx = self.x.size()[0]
+        self.nu = self.u.size()[0]
         self.ny = self.nx + self.nu
         self.nq = nq
         self.nv = nq
-        self.np = self.amodel.p.size()[0]
+        self.np = self.p.size()[0]
 
         # Real dynamics
         H_b = np.eye(4)
@@ -64,6 +56,7 @@ class Z1Model:
         joint_velocity = np.array([joint.limit.velocity for joint in robot_joints]) 
         # joint_effort = np.array([joint.limit.effort for joint in robot_joints]) 
         joint_effort = np.array([2., 23., 10., 4., 2., 2.])
+        joint_effort = joint_effort[:n_dofs]
 
         self.tau_min = - joint_effort
         self.tau_max = joint_effort

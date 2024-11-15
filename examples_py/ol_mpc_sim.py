@@ -18,12 +18,14 @@ opts = {
         'ipopt.tol': 1e-6,
         'ipopt.constr_viol_tol': 1e-6,
         'ipopt.compl_inf_tol': 1e-6,
+        'ipopt.linear_solver': 'ma57',
         'ipopt.hessian_approximation': 'limited-memory',
         'ipopt.max_iter': params.nlp_max_iter
         }
 opti.solver('ipopt', opts)  
 
 q0 = np.array([0., 0.26178, -0.26178, 0., 0., 0.])
+q0 = q0[:nq]
 x0 = np.zeros(model.nx)
 x0[:nq] = q0
 

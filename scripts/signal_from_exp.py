@@ -3,7 +3,6 @@ import adam.numpy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from orc.utils import plot_utils
 import scipy.signal as signal
 from scipy.fftpack import fft
 from urdf_parser_py.urdf import URDF
@@ -86,7 +85,7 @@ for i in range(n):
     tau_z1[i] = armModel.inverseDynamics(q[i], qd[i], qdd[i], np.zeros(6))
 
 if PLOT_POS:
-    fig, ax = plot_utils.create_empty_figure(3, 2)
+    fig, ax = plt.subplot(3, 2, sharex=True)
     ax = ax.reshape(6)
     for i in range(6):
         ax[i].axhline(rmodel.lowerPositionLimit[i], c='k', ls='--', lw=1)
@@ -96,7 +95,7 @@ if PLOT_POS:
         ax[i].set_xlabel('Time (s)')
 
 if PLOT_VEL:
-    fig, ax = plot_utils.create_empty_figure(3, 2)
+    fig, ax = plt.subplot(3, 2, sharex=True)
     ax = ax.reshape(6)
     for i in range(6):
         ax[i].axhline(rmodel.velocityLimit[i], c='k', ls='--', lw=1)
@@ -106,7 +105,7 @@ if PLOT_VEL:
         ax[i].set_xlabel('Time (s)')
 
 if PLOT_TORQUE:
-    fig, ax = plot_utils.create_empty_figure(3, 2)
+    fig, ax = plt.subplot(3, 2, sharex=True)
     ax = ax.reshape(6)
     for i in range(6):
         ax[i].axhline(rmodel.effortLimit[i], c='k', ls='--', lw=1)
@@ -141,7 +140,7 @@ if PLOT_FILT:
     plt.ylabel('FFT Amplitude |X(freq)|')
 
 if PLOT_EE:
-    fig, ax = plot_utils.create_empty_figure(3, 1)
+    fig, ax = plt.subplot(3, 1, sharex=True)
     for i in range(3):
         ax[i].plot(t, ee_z1[:, i], label='z1_' + str(i), c='g', ls='--')
         ax[i].plot(t, ee_adam[:, i], label='adam_' + str(i), c='r', ls='--')

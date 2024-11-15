@@ -7,6 +7,7 @@ description_dir = ROOT_DIR + '/z1_description'
 robot_urdf = description_dir + '/urdf/z1.urdf'
 frame_name = 'gripperMover'
 urdf_name = 'z1'
+n_dofs = 4
 
 dt = 0.01
 

@@ -35,10 +35,9 @@ obstacles = [obs]
 ### VISUALIZER ###
 class RobotVisualizer:
     def __init__(self):
-        n_dofs = 6
-        self.params = params
+        n_dofs = params.n_dofs
         rmodel, collision, visual = pin.buildModelsFromUrdf(params.robot_urdf,
-                                                            package_dirs=params.ROOT_DIR)
+                                                            package_dirs=params.description_dir)
         geom = [collision, visual]
         lockIDs = []
         lockNames = rmodel.names.tolist()[1:]               # skip 'universe' joint 
@@ -48,7 +47,7 @@ class RobotVisualizer:
         
         self.viz = pin.visualize.MeshcatVisualizer(rmodel_red, geom_red[0], geom_red[1])
         self.viz.initViewer(loadModel=True, open=True)
-        self.viz.setCameraPosition(np.array([1., -1., 1.]))
+        # self.viz.setCameraPosition(np.array([1., -1., 1.]))
 
         # Set the end-effector target
         ee_radius = 0.075   
@@ -90,13 +89,13 @@ class RobotVisualizer:
 
     def display(self, q):
         self.viz.display(q)
-        time.sleep(self.params.dt)
+        time.sleep(params.dt)
 
     def displayWithEE(self, q, T_ee):
         self.viz.display(q)
         self.viz.viewer['world/robot/ee'].set_property('visible', True)
         self.viz.viewer['world/robot/ee'].set_transform(T_ee)
-        time.sleep(self.params.dt)
+        time.sleep(params.dt)
 
     def moveCamera(self, cam_pos):
         self.viz.setCameraPosition(cam_pos)
