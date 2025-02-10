@@ -25,8 +25,8 @@ endforeach()
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
-set(PYTHON_EXECUTABLE /usr/bin/python3)
-find_package(pybind11 QUIET)
+set(pybind11_DIR /home/z1-workstation/env_z1/lib/python3.9/site-packages/pybind11/share/cmake/pybind11)
+find_package(pybind11 REQUIRED)
 if(${pybind11_FOUND})
   pybind11_add_module(unitree_arm_interface examples_py/arm_python_interface.cpp)
   target_link_libraries(unitree_arm_interface PRIVATE Z1_SDK_${CMAKE_SYSTEM_PROCESSOR})
