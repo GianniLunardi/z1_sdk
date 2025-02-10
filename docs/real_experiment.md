@@ -23,4 +23,14 @@ the green light is steady on, and the blue light will flash once the self-check 
         cd unitree_ws/src/z1_sdk/build
         ./highcmd_development
         ```
-- NOTE: each experiment can be interrupted by pressing `ctrl + C` in the terminal of the SDK. Remember that the interruption bring the robot in the passive mode, so it will fall down. 
+- NOTE: each experiment can be interrupted by pressing `ctrl + \` in the terminal of the SDK. Remember that the interruption bring the robot in the passive mode, so it will fall down. 
+
+## Keybord
+The robotic arm can be command using the keyboard, both in simulation or real experiment:
+```
+cd unitree_ws/src/z1_controller/build
+./sim_ctrl k
+# OR
+.z1_ctrl k
+```
+All the possible states and commands can be found on the following [link](https://support.unitree.com/home/en/Z1_developer/keyboard)
