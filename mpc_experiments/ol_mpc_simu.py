@@ -104,7 +104,7 @@ for i in range(params.n_steps):
             xg = np.full((safe_ocp.N + 1, model.nx), x_viable)
             ug = np.zeros((safe_ocp.N, model.nu))
             safe_ocp.setGuess(xg, ug) 
-            status = safe_ocp.solve(x_viable[-1])
+            status = safe_ocp.solve(x_viable)
             if status != 0:
                 print('  SAFE ABORT FAILED')
                 print('  Current controller fails:', controller.fails)

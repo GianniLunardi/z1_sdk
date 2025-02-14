@@ -82,41 +82,70 @@ if params.obs_flag:
 time.sleep(5)
 
 # MPC loop
-x = np.empty((params.n_steps + 1, model.nx)) * np.nan
-u = np.empty((params.n_steps, model.nu)) * np.nan
-x[0] = x0
+x = x0
 controller.setGuess(xg, ug)
 controller.resetHorizon(params.N)
 ia, sa_flag = 0, False
-tot_time, solver_time = np.zeros(params.n_steps), np.zeros(params.n_steps)
-for i in range(params.n_steps):
+
+step_size = 0.02
+omega = 6.28*1.5
+amp = 0.07
+t = 0.0
+sin_ref = np.copy(ee_ref)
+use_sinusoid = 0
+
+i = 0
+while 1:
 
     start_time = time.time()
 
-    if i == 500:
-        ee_ref = np.array([0.3, 0., 0.478])
-        controller.setReference(ee_ref)
-        rviz.setTarget(ee_ref)
+    if(use_sinusoid):
+        sin_ref[0] = ee_ref[0]
+        sin_ref[1] = ee_ref[1] + amp*np.sin(omega*t)
+        sin_ref[2] = ee_ref[2] + amp*np.cos(omega*t)
+        controller.setReference(sin_ref)
+        t += params.dt
+        if i % 10 ==0:
+            rviz.setTarget(sin_ref)
 
-    if i == 1000:
-        ee_ref = np.array([0.2, -0.28, 0.378])
-        controller.setReference(ee_ref)
+    try:
+        k = keys.pop(0)
+        if(k=="up"):      
+            ee_ref[0] -= step_size
+        elif(k=="down"):   
+            ee_ref[0] += step_size
+        elif(k=="right"):      
+            ee_ref[1] += step_size
+        elif(k=="left"):   
+            ee_ref[1] -= step_size
+        elif(k=="page_up"):      
+            ee_ref[2] += step_size
+        elif(k=="page_down"):   
+            ee_ref[2] -= step_size
+        elif(k=="q"):
+            print("QUITTING...")
+            break
+        print("\nTarget", ee_ref)
+        if(not use_sinusoid):
+            controller.setReference(ee_ref)
         rviz.setTarget(ee_ref)
+    except:
+        pass
 
     if sa_flag and ia < safe_ocp.N:
-        u[i] = u_abort[ia]
+        u = u_abort[ia]
         ia += 1
     else:
-        u[i], sa_flag = controller.step(x[i])
-        x[i + 1], _ = model.integrate(x[i], u[i])
+        u, sa_flag = controller.step(x)
+        x_next, _ = model.integrate(x, u)
 
         if sa_flag:
-            print(f'  ABORT at step {i}, u = {u[i]}')
+            print(f'  ABORT at step {i}, u = {u}')
             x_viable = controller.getLastViableState()
             xg = np.full((safe_ocp.N + 1, model.nx), x_viable)
             ug = np.zeros((safe_ocp.N, model.nu))
             safe_ocp.setGuess(xg, ug) 
-            status = safe_ocp.solve(x_viable[-1])
+            status = safe_ocp.solve(x_viable)
             if status != 0:
                 print('  SAFE ABORT FAILED')
                 print('  Current controller fails:', controller.fails)
@@ -125,32 +154,22 @@ for i in range(params.n_steps):
             u_abort = safe_ocp.u_temp
 
     # Check next state bounds and collision
-    if not model.checkStateConstraints(x[i + 1]):   
+    if not model.checkStateConstraints(x_next):   
         print('  FAIL BOUNDS')
-        print(f'\tState {i + 1} violation: {np.min(np.vstack((model.x_max - x[i + 1], x[i + 1] - model.x_min)), axis=0)}')
+        print(f'\tState {i + 1} violation: {np.min(np.vstack((model.x_max - x_next, x_next - model.x_min)), axis=0)}')
         print(f'\tCurrent controller fails: {controller.fails}')
         break
-    if not controller.checkCollision(x[i + 1]):
+    if not controller.checkCollision(x_next):
         print('  FAIL COLLISION')
         break
+    
+    x = x_next
+    if i % 5 == 0:
+        rviz.display(x[:nq])
+
     end_time = time.time()
-
     delta = params.dt - (end_time - start_time)
-    solver_time[i] = controller.ocp_solver.get_stats("time_tot")
-    tot_time[i] = end_time - start_time
-    if(i%3==0):
-        print(f'Iteration {i+1}/{params.n_steps} - '
-              f'Time: {tot_time[i]:.3f}s - '
-                f'Total solver time {solver_time[i]:.3f}s \n')
-        rviz.display(x[i][:nq])
-
     time.sleep(delta if delta > 0 else 0)
+    i += 1
 
-print('TIMINGS')
-tot_time = np.asarray(tot_time)
-solver_time = np.asarray(solver_time)
-perc = 0.95
-print(f'{int(perc * 100)} percentile, tot = {np.quantile(tot_time, perc):.3f}s, '
-      f'solver = {np.quantile(solver_time, perc)}')
-print(f'Max time, tot = {max(tot_time):.3f}s, '
-      f'solver = {max(solver_time)}')
+print('*** END ***')
