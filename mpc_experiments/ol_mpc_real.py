@@ -6,11 +6,9 @@ import numpy as np
 from utils import ee_ref, obstacles, RobotVisualizer
 from safe_mpc.parser import Parameters, parse_args
 from safe_mpc.abstract import AdamModel
-from safe_mpc.ocp import NaiveOCP
-from safe_mpc.controller import NaiveController
+from safe_mpc.utils import get_ocp, get_controller
+from safe_mpc.controller import SafeBackupController
 from pynput import keyboard
-import gc
-gc.disable()
 
 keys = []
 def on_press(key):
@@ -27,10 +25,13 @@ args = parse_args()
 model_name = args['system']
 params = Parameters(model_name, rti=True, filename='casadi_mpc/config.yaml')
 params.build = args['build']
-model = AdamModel(params, n_dofs=4)
+params.act = args['activation']
+model = AdamModel(params, n_dofs=6)
 nq = model.nq
 model.ee_ref = ee_ref
-ocp = NaiveOCP(model, obstacles)
+
+cont_name = args['controller']
+ocp = get_ocp(cont_name, model, obstacles)
 opti = ocp.opti
 # Options for the initial guess
 opts = {
@@ -44,7 +45,9 @@ opts = {
         'ipopt.max_iter': params.nlp_max_iter
         }
 opti.solver('ipopt', opts)  
-controller = NaiveController(model, obstacles)
+controller = get_controller(cont_name, model, obstacles)
+params.solver_type = 'SQP'
+safe_ocp = SafeBackupController(model, obstacles)
 if args['build']:
     print('*** Ready for running the MPC at the next launch ***')
     exit()
@@ -104,11 +107,9 @@ time.sleep(5)
 
 # MPC loop
 print('[MPC]')
-#x = np.empty((params.n_steps + 1, model.nx)) * np.nan
-#u = np.empty((params.n_steps, model.nu)) * np.nan
 x = x0
 controller.setGuess(xg, ug)
-sa_flag = False
+ia, sa_flag = 0, False
 tot_time, solver_time = np.nan*np.zeros(params.n_steps), np.nan*np.zeros(params.n_steps)
 q_des, v_des = np.copy(q0_real), np.zeros(6)
 
@@ -120,7 +121,7 @@ sin_ref = np.copy(ee_ref)
 use_sinusoid = 0
 
 i = 0
-while(True):
+while 1:
     start_time = time.time()
 
     if(use_sinusoid):

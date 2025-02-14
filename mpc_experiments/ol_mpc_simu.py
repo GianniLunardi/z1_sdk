@@ -6,11 +6,6 @@ from safe_mpc.abstract import AdamModel
 from safe_mpc.utils import get_ocp, get_controller
 from safe_mpc.controller import SafeBackupController
 
-# import os 
-# os.sched_get_priority_max(os.SCHED_FIFO)
-
-import gc
-gc.disable()
 
 args = parse_args()
 model_name = args['system']
@@ -22,7 +17,6 @@ nq = model.nq
 model.ee_ref = ee_ref
 
 cont_name = args['controller']
-# ocp = NaiveOCP(model, obstacles)
 ocp = get_ocp(cont_name, model, obstacles)
 opti = ocp.opti
 # Options for the initial guess
@@ -38,6 +32,7 @@ opts = {
         }
 opti.solver('ipopt', opts)  
 controller = get_controller(cont_name, model, obstacles)
+params.solver_type = 'SQP'
 safe_ocp = SafeBackupController(model, obstacles)
 if args['build']:
     print('*** Ready for running the MPC at the next launch ***')
@@ -80,8 +75,7 @@ u = np.empty((params.n_steps, model.nu)) * np.nan
 x[0] = x0
 controller.setGuess(xg, ug)
 controller.resetHorizon(params.N)
-ia = 0
-sa_flag = False
+ia, sa_flag = 0, False
 tot_time, solver_time = np.zeros(params.n_steps), np.zeros(params.n_steps)
 for i in range(params.n_steps):
 
@@ -143,7 +137,8 @@ for i in range(params.n_steps):
 print('TIMINGS')
 tot_time = np.asarray(tot_time)
 solver_time = np.asarray(solver_time)
-print(f'99 percentile, tot = {np.quantile(tot_time, 0.99):.3f}s, '
-      f'solver = {np.quantile(solver_time, 0.99)}')
+perc = 0.95
+print(f'{int(perc * 100)} percentile, tot = {np.quantile(tot_time, perc):.3f}s, '
+      f'solver = {np.quantile(solver_time, perc)}')
 print(f'Max time, tot = {max(tot_time):.3f}s, '
       f'solver = {max(solver_time)}')
