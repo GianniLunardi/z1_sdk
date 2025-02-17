@@ -121,6 +121,7 @@ sin_ref = np.copy(ee_ref)
 use_sinusoid = 0
 
 i = 0
+q_log, v_log = [], []
 while 1:
     start_time = time.time()
 
@@ -176,6 +177,10 @@ while 1:
         tot_time[i] = end_time - start_time
         i += 1
 
+    # Log data
+    q_log.append(arm.lowstate.getQ())
+    v_log.append(arm.lowstate.getQd())
+
     delta = params.dt - (end_time - start_time)
     time.sleep(delta if delta > 0 else 0)
 
@@ -191,3 +196,6 @@ print(f'99 percentile, tot = {np.quantile(tot_time, 0.99):.3f}s, '
       f'solver = {np.quantile(solver_time, 0.99):.3f}')
 print(f'Max time, tot = {max(tot_time):.3f}s, '
       f'solver = {max(solver_time):.3f}')
+
+# Save data
+np.savez_compressed('data/mpc_exp.npz', q=q_log, v=v_log)
