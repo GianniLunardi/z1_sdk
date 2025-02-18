@@ -5,7 +5,7 @@
 - turn on the robotic arm, when the device is powered on successfully,
 the green light is steady on, and the blue light will flash once the self-check passes. Make sure the robot is in the home position (all the joints in zero)
 - connect the arm to the PC through an Ethernet cable 
-- setup the network configuration through the UI (this should be sufficient only one time), Settings ⇒ Network ⇒ Wired and then set manually the IPv4 as in the following image 
+- setup the network configuration through the UI (this should be sufficient only one time), Settings &rarr; Network &rarr; Wired and then set manually the IPv4 as in the following image (one of the family **192.168.123.x** is ok) 
 
   ![ipv4](./images/ipv4.png)
 
