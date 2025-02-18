@@ -10,20 +10,41 @@ from safe_mpc.utils import get_ocp, get_controller
 from safe_mpc.controller import SafeBackupController
 from pynput import keyboard
 
+import asyncio
+import qtm_rt
+
+def ridig_body_data(packet):
+    global last_meas 
+    _, bodies = packet.get_6d()
+    try:
+        pos, _ = bodies[0]
+        x, y, z = pos 
+        last_meas = np.array([x, y, z]) * 1e-3
+    except:
+        print('Error, body not found')
+
+async def qtm_stream():
+    connection = await qtm_rt.connect("192.168.225.1")
+    if connection is None:
+        return
+
+    await connection.stream_frames(components=["6d"], on_packet=ridig_body_data)
+
+
 keys = []
 def on_press(key):
     try:
         k = key.char
     except:
         k = key.name
-    if(k in ['left', 'right', 'up', 'down', 'page_up', 'page_down', 'q']):
+    if(k in ['left', 'right', 'up', 'down', 'page_up', 'page_down', 'm', 'q']):
         keys.append(k)
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
 
 args = parse_args()
 model_name = args['system']
-params = Parameters(model_name, rti=True, filename='casadi_mpc/config.yaml')
+params = Parameters(model_name, rti=True, filename='config.yaml')
 params.build = args['build']
 params.act = args['activation']
 model = AdamModel(params, n_dofs=6)
@@ -98,7 +119,7 @@ time.sleep(2)
 
 # Visualizer
 print('\n', '*'*5, 'OPEN VISUALIZER', '*'*5, '\n')
-rviz = RobotVisualizer()
+rviz = RobotVisualizer(nq)
 rviz.viz.display(x0[:nq])
 rviz.setTarget(ee_ref)
 if params.obs_flag:
@@ -107,95 +128,132 @@ time.sleep(5)
 
 # MPC loop
 print('[MPC]')
-x = x0
-controller.setGuess(xg, ug)
-ia, sa_flag = 0, False
-tot_time, solver_time = np.nan*np.zeros(params.n_steps), np.nan*np.zeros(params.n_steps)
-q_des, v_des = np.copy(q0_real), np.zeros(6)
+async def mpc_loop():
 
-step_size = 0.02
-omega = 6.28*1.5
-amp = 0.07
-t = 0.0
-sin_ref = np.copy(ee_ref)
-use_sinusoid = 0
+    asyncio.create_task(qtm_stream())
+    await asyncio.sleep(1)
 
-i = 0
-q_log, v_log = [], []
-while 1:
-    start_time = time.time()
+    x = x0
+    controller.setGuess(xg, ug)
+    ia, sa_flag = 0, False
+    tot_time, solver_time = np.nan*np.zeros(params.n_steps), np.nan*np.zeros(params.n_steps)
+    q_des, v_des = np.copy(q0_real), np.zeros(6)
 
-    if(use_sinusoid):
-        sin_ref[0] = ee_ref[0]
-        sin_ref[1] = ee_ref[1] + amp*np.sin(omega*t)
-        sin_ref[2] = ee_ref[2] + amp*np.cos(omega*t)
-        controller.setReference(sin_ref)
-        t += dt
-        if(i%10==0):
-            rviz.setTarget(sin_ref)
-            #rviz.display(x[:nq])
+    step_size = 0.02
+    omega = 6.28*1.5
+    amp = 0.07
+    t = 0.0
+    sin_ref = np.copy(ee_ref)
+    use_sinusoid = 0
+    use_mocap = 0
 
-    try:
-        k = keys.pop(0)
-        if(k=="up"):      
-            ee_ref[0] -= step_size
-        elif(k=="down"):   
-            ee_ref[0] += step_size
-        elif(k=="right"):      
-            ee_ref[1] += step_size
-        elif(k=="left"):   
-            ee_ref[1] -= step_size
-        elif(k=="page_up"):      
-            ee_ref[2] += step_size
-        elif(k=="page_down"):   
-            ee_ref[2] -= step_size
-        elif(k=="q"):
-            print("QUITTING...")
-            break
-        print("\nTarget", ee_ref)
-        if(not use_sinusoid):
-            controller.setReference(ee_ref)
-        rviz.setTarget(ee_ref)
-    except:
-        pass
+    old_ref = np.copy(ee_ref)
 
-    u, sa_flag = controller.step(x)
-    x_next, _ = model.integrate(x, u)
+    i = 0
+    q_log, v_log = [], []
+    ee_log = []
+    while 1:
+        start_time = time.time()
 
-    # ATTENTION: skip all the checks
-    q_des[:nq] = x_next[:nq]
-    v_des[:nq] = x_next[nq:]
-    arm.setArmCmd(q_des, v_des, tau_des)
+        if(use_sinusoid):
+            sin_ref[0] = ee_ref[0]
+            sin_ref[1] = ee_ref[1] + amp*np.sin(omega*t)
+            sin_ref[2] = ee_ref[2] + amp*np.cos(omega*t)
+            controller.setReference(sin_ref)
+            t += dt
+            if(i%10==0):
+                rviz.setTarget(sin_ref)
+                #rviz.display(x[:nq])
 
-    x = x_next
-    if i % 10 == 0:
-        rviz.display(x[:nq])
-    end_time = time.time()
+        if use_mocap == 1:
+            if i % 10 == 0:
+                new_ref = last_meas.copy()
+                if np.isnan(new_ref).any(): 
+                    # Use the old one
+                    new_ref = old_ref.copy()
+                # if np.linalg.norm(new_ref - old_ref) > 0.1:
+                #     print('STOP THE SYSTEM ... ')
+                #     break
 
-    if(i<params.n_steps):
-        solver_time[i] = controller.ocp_solver.get_stats("time_tot")
-        tot_time[i] = end_time - start_time
-        i += 1
+                ee_ref[0] = new_ref[0] - 0.1        # 10 cm of safety distance
+                ee_ref[1] = new_ref[1]
+                ee_ref[2] = new_ref[2]
+                controller.setReference(ee_ref)
+                rviz.setTarget(ee_ref)
+                old_ref = new_ref.copy()
 
-    # Log data
-    q_log.append(arm.lowstate.getQ())
-    v_log.append(arm.lowstate.getQd())
+        try:
+            k = keys.pop(0)
+            if(k=="up"):      
+                ee_ref[0] -= step_size
+            elif(k=="down"):   
+                ee_ref[0] += step_size
+            elif(k=="right"):      
+                ee_ref[1] += step_size
+            elif(k=="left"):   
+                ee_ref[1] -= step_size
+            elif(k=="page_up"):      
+                ee_ref[2] += step_size
+            elif(k=="page_down"):   
+                ee_ref[2] -= step_size
+            elif(k=="m"):
+                use_mocap = 1
+            elif(k=="q"):
+                print("QUITTING...")
+                break
+            # print("\nTarget", ee_ref)
+            if(not use_sinusoid):
+                controller.setReference(ee_ref)
+            if i % 10 == 0:
+                rviz.setTarget(ee_ref)
+        except:
+            pass
 
-    delta = params.dt - (end_time - start_time)
-    time.sleep(delta if delta > 0 else 0)
+        u, sa_flag = controller.step(x)
+        x_next, _ = model.integrate(x, u)
 
-print('[BACK]')
-time.sleep(2)
-arm.backToStart()
-arm.loopOff()
+        # ATTENTION: skip all the checks
+        q_des[:nq] = x_next[:nq]
+        v_des[:nq] = x_next[nq:]
+        arm.setArmCmd(q_des, v_des, tau_des)
 
-print('TIMINGS')
-tot_time = np.asarray(tot_time[:i])
-solver_time = np.asarray(solver_time[:i])
-print(f'99 percentile, tot = {np.quantile(tot_time, 0.99):.3f}s, '
-      f'solver = {np.quantile(solver_time, 0.99):.3f}')
-print(f'Max time, tot = {max(tot_time):.3f}s, '
-      f'solver = {max(solver_time):.3f}')
+        x = x_next
+        if i % 10 == 0:
+            rviz.display(x[:nq])
+        end_time = time.time()
 
-# Save data
-np.savez_compressed('data/mpc_exp.npz', q=q_log, v=v_log)
+        if(i<params.n_steps):
+            solver_time[i] = controller.ocp_solver.get_stats("time_tot")
+            tot_time[i] = end_time - start_time
+            i += 1
+
+        # Log data
+        q_log.append(arm.lowstate.getQ())
+        v_log.append(arm.lowstate.getQd())
+        # if last_meas is not None:
+        #     ee_log.append(last_meas.copy())
+        # if i % 10:
+        #     print(last_meas.copy())
+
+        delta = params.dt - (end_time - start_time)
+        # time.sleep(delta if delta > 0 else 0)
+        await asyncio.sleep(delta if delta > 0 else 0)
+
+    print('[BACK]')
+    time.sleep(2)
+    arm.backToStart()
+    arm.loopOff()
+
+    print('TIMINGS')
+    tot_time = np.asarray(tot_time[:i])
+    solver_time = np.asarray(solver_time[:i])
+    print(f'99 percentile, tot = {np.quantile(tot_time, 0.99):.3f}s, '
+        f'solver = {np.quantile(solver_time, 0.99):.3f}')
+    print(f'Max time, tot = {max(tot_time):.3f}s, '
+        f'solver = {max(solver_time):.3f}')
+
+    # Save data
+    # np.savez_compressed('data/mpc_exp.npz', q=q_log, v=v_log, ee=ee_log)
+
+asyncio.run(mpc_loop())
+print('Finish process')
