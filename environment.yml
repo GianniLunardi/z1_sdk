@@ -1,0 +1,19 @@
+name: z1
+channels:
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - python=3.11
+  - numpy
+  - conda-forge::casadi
+  - conda-forge::matplotlib
+  - conda-forge::pyyaml
+  - conda-forge::pandas
+  - example-robot-data
+  - conda-forge::adam-robotics-casadi
+  - conda-forge::scikit-build
+  - conda-forge::meshcat-python
+  - pip
+  - pip:
+    - "-r requirements.txt"
+prefix: /home/glunardi/miniconda3/envs/z1
