@@ -13,7 +13,7 @@ dependencies:
   - conda-forge::adam-robotics-casadi
   - conda-forge::scikit-build
   - conda-forge::meshcat-python
-  - pip
+  - pip=25.0
   - pip:
     - "-r requirements.txt"
 prefix: /home/glunardi/miniconda3/envs/z1
