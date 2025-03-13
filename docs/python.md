@@ -1,4 +1,23 @@
 # Python scripts
+
+## Environment
+The environment can be built using `conda`:
+```
+conda env create -n ENVNAME --file environment.yml
+conda activate ENVNAME
+```
+Then the following `pip` dependencies must be installed:
+- **torch** (CPU version)
+    ```
+    pip install torch --index-url https://download.pytorch.org/whl/cpu
+    ```
+- **acados** &rarr; follow the instructions on the [documentation](https://docs.acados.org/installation/index.html) site.
+- **l4casadi** (compatibility ensured with version 1.4.1)
+    ```
+    pip install l4casadi==1.4.1 --no-build-isolation
+    ```
+
+## Examples
 Both simulations and real experiments can be launched from Python scripts (instead of C++ programs). The scripts can be found in the `z1_dk/example_py` folder.
 The interface is designed in the `arm_python_interface.cpp` file. Users can change directly this source file to expose more methods and/or properties, following the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/). The `unitree_arm_interface.pyi` is simply a python interface for intelligent hints, which cannot be obtained from the compiled dynamic library `.so`.
 
@@ -11,22 +30,6 @@ Also, for visualization purposes, the following `ROS_PACKAGE_PATH` must be inser
 ```
 export ROS_PACKAGE_PATH=$HOME/env_z1/lib/python3.9/site-packages/cmeel.prefix/share/example-robot-data:$ROS_PACKAGE_PATH
 ```
-Some examples need python packages that were not listed in the Unitree requirements. In addition, `Python>=3.9` is needed. For full compatibility, the packages in `requirements.txt` must be installed (we suggest to build a virtual python environment):
-```
-pip install -r requirements.txt
-``` 
-
-## Common issues 
-The installation of the requirements can be troublesome. In particular, we have faced issues with the following packages:
-- `torch` -> we suggest the installation of the CPU version, since its needed only for inference using small MLP
-    ```
-    pip install torch --index-url https://download.pytorch.org/whl/cpu
-    ```
-- `l4casadi` -> needs the `no-build-isolation` flag
-    ```
-    pip install l4casadi --no-build-isolation
-    ```
-Remember to upgrate pip to a version >=24.3.1
 
 ## Python bindings
 If the user wants to expose more features in the python interface, then he must add the following lines in the `CMakeLists.txt`:
