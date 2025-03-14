@@ -1,9 +1,9 @@
 import time
 import numpy as np
-from utils import ee_ref, obstacles, RobotVisualizer
 from safe_mpc.parser import Parameters, parse_args
 from safe_mpc.abstract import AdamModel
-from safe_mpc.utils import get_ocp, get_controller
+from safe_mpc.utils import get_ocp, get_controller, RobotVisualizer, \
+                           obstacles, capsules, capsule_pairs
 from safe_mpc.controller import SafeBackupController
 
 
@@ -52,7 +52,7 @@ if use_3d_curve:
 model.ee_ref = ee_ref
 
 cont_name = args['controller']
-ocp = get_ocp(cont_name, model, obstacles)
+ocp = get_ocp(cont_name, model, obstacles, capsules, capsule_pairs)
 opti = ocp.opti
 # Options for the initial guess
 opts = {
@@ -65,9 +65,9 @@ opts = {
         'ipopt.max_iter': params.nlp_max_iter
         }
 opti.solver('ipopt', opts)  
-controller = get_controller(cont_name, model, obstacles)
+controller = get_controller(cont_name, model, obstacles, capsules, capsule_pairs)
 params.solver_type = 'SQP'
-safe_ocp = SafeBackupController(model, obstacles)
+safe_ocp = SafeBackupController(model, obstacles, capsules, capsule_pairs)
 if args['build']:
     print('*** Ready for running the MPC at the next launch ***')
     exit()
@@ -91,7 +91,7 @@ except:
 
 # Visualizer
 print('\n', '*'*5, 'OPEN VISUALIZER', '*'*5, '\n')
-rviz = RobotVisualizer(nq)
+rviz = RobotVisualizer(params, nq)
 rviz.viz.display(x0[:nq])
 rviz.setTarget(ee_ref)
 if params.obs_flag:
