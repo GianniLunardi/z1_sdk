@@ -9,7 +9,7 @@ conda activate ENVNAME
 Then the following `pip` dependencies must be installed:
 - **torch** (CPU version)
     ```
-    pip install torch --index-url https://download.pytorch.org/whl/cpu
+    pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cpu
     ```
 - **acados** &rarr; follow the instructions on the [documentation](https://docs.acados.org/installation/index.html) site.
 - **l4casadi** (compatibility ensured with version 1.4.1)

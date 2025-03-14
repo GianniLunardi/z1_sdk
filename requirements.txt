@@ -1,6 +1,7 @@
 urdf-parser-py
-pynput
+pynput==1.7.1
 qtm
 qtm-rt==3.0.1
-#torch --index-url https://download.pytorch.org/whl/cpu
-#l4casadi==1.4.1 --no-build-isolation
+# torch --index-url https://download.pytorch.org/whl/cpu
+# l4casadi==1.4.1 --no-build-isolation
+# acados_template

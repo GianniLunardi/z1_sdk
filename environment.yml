@@ -13,6 +13,7 @@ dependencies:
   - conda-forge::adam-robotics-casadi
   - conda-forge::scikit-build
   - conda-forge::meshcat-python
+  - conda-forge::pinocchio=2.7.0
   - pip=25.0
   - pip:
     - "-r requirements.txt"
