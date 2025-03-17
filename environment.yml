@@ -14,6 +14,7 @@ dependencies:
   - conda-forge::scikit-build
   - conda-forge::meshcat-python
   - conda-forge::pinocchio=2.7.0
+  - conda-forge::pybind11
   - pip=25.0
   - pip:
     - "-r requirements.txt"
