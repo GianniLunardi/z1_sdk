@@ -1,5 +1,7 @@
 import time
 import sys
+import asyncio
+import qtm_rt
 sys.path.append("../lib")
 import unitree_arm_interface
 import numpy as np
@@ -10,8 +12,6 @@ from safe_mpc.utils import get_ocp, get_controller
 from safe_mpc.controller import SafeBackupController
 from pynput import keyboard
 
-import asyncio
-import qtm_rt
 
 def ridig_body_data(packet):
     global last_meas 
@@ -22,6 +22,7 @@ def ridig_body_data(packet):
         last_meas = np.array([x, y, z]) * 1e-3
     except:
         print('Error, body not found')
+        
 
 async def qtm_stream():
     connection = await qtm_rt.connect("192.168.225.1")
