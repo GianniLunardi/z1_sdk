@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(z1_sdk)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++14 -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++14 -pthread -I/usr/include/eigen3")
 
 include_directories(
   include
@@ -25,7 +25,7 @@ endforeach()
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
-set(pybind11_DIR /home/z1-workstation/env_z1/lib/python3.9/site-packages/pybind11/share/cmake/pybind11)
+set(pybind11_DIR /home/gianni/env_l4c_cpu/lib/python3.9/site-packages/pybind11/share/cmake/pybind11)
 find_package(pybind11 REQUIRED)
 if(${pybind11_FOUND})
   pybind11_add_module(unitree_arm_interface examples_py/arm_python_interface.cpp)
