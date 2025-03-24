@@ -2,13 +2,15 @@ import time
 import sys
 import asyncio
 import qtm_rt
+from datetime import datetime
 sys.path.append("../lib")
 import unitree_arm_interface
 import numpy as np
-from utils import ee_ref, obstacles, RobotVisualizer
 from safe_mpc.parser import Parameters, parse_args
 from safe_mpc.abstract import AdamModel
-from safe_mpc.utils import get_ocp, get_controller
+from safe_mpc.utils import get_ocp, get_controller, ee_ref, obstacles, \
+                           capsules, capsule_pairs, RobotVisualizer, \
+                           BUFFER_SIZE, safe_dist
 from safe_mpc.controller import SafeBackupController
 from pynput import keyboard
 
@@ -43,6 +45,9 @@ def on_press(key):
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
 
+timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+filename = f"exp_data/{timestamp}.npz"
+
 args = parse_args()
 model_name = args['system']
 params = Parameters(model_name, rti=True, filename='config.yaml')
@@ -53,7 +58,7 @@ nq = model.nq
 model.ee_ref = ee_ref
 
 cont_name = args['controller']
-ocp = get_ocp(cont_name, model, obstacles)
+ocp = get_ocp(cont_name, model, obstacles, capsules, capsule_pairs)
 opti = ocp.opti
 # Options for the initial guess
 opts = {
@@ -67,9 +72,8 @@ opts = {
         'ipopt.max_iter': params.nlp_max_iter
         }
 opti.solver('ipopt', opts)  
-controller = get_controller(cont_name, model, obstacles)
-params.solver_type = 'SQP'
-safe_ocp = SafeBackupController(model, obstacles)
+controller = get_controller(cont_name, model, obstacles, capsules, capsule_pairs)
+safe_ocp = SafeBackupController(model, obstacles, capsules, capsule_pairs)
 if args['build']:
     print('*** Ready for running the MPC at the next launch ***')
     exit()
@@ -119,17 +123,21 @@ arm.setArmCmd(q0_real, np.zeros(6), tau_des)
 time.sleep(2)
 
 # Visualizer
-print('\n', '*'*5, 'OPEN VISUALIZER', '*'*5, '\n')
-rviz = RobotVisualizer(nq)
-rviz.viz.display(x0[:nq])
-rviz.setTarget(ee_ref)
-if params.obs_flag:
-    rviz.addObstacles(obstacles)
+VIZ_FLAG = 0
+if VIZ_FLAG:
+    print('\n', '*'*5, 'OPEN VISUALIZER', '*'*5, '\n')
+    rviz = RobotVisualizer(params, nq)
+    rviz.displayWithEESphere(x0[:nq], controller.capsules)
+    rviz.setTarget(ee_ref)
+    if params.obs_flag:
+        rviz.addObstacles(obstacles)
+        for capsule in controller.capsules:
+                rviz.init_capsule(capsule)
 time.sleep(5)
 
 # MPC loop
 print('[MPC]')
-async def mpc_loop():
+async def mpc_loop(xg, ug):
 
     asyncio.create_task(qtm_stream())
     await asyncio.sleep(1)
@@ -137,34 +145,31 @@ async def mpc_loop():
     x = x0
     controller.setGuess(xg, ug)
     ia, sa_flag = 0, False
-    tot_time, solver_time = np.nan*np.zeros(params.n_steps), np.nan*np.zeros(params.n_steps)
     q_des, v_des = np.copy(q0_real), np.zeros(6)
-
+    
     step_size = 0.02
-    omega = 6.28*1.5
-    amp = 0.07
-    t = 0.0
-    sin_ref = np.copy(ee_ref)
-    use_sinusoid = 0
     use_mocap = 0
-
     old_ref = np.copy(ee_ref)
 
-    i = 0
-    q_log, v_log = [], []
-    ee_log = []
-    while 1:
-        start_time = time.time()
+    # LOGS
+    # MPC state + Robot state + EE ref + 2 timings (solver and tot) 
+    # + MPC control (acceleration) + Measured torque
+    # 12 + 12 + 3 + 2 + 6 + 6 = 41
+    # Slicing 
+    # MPC state -> [:12]
+    # Robot joint pos -> [12:18]
+    # Robot joint vel -> [18:24]
+    # EE ref -> [24:27]
+    # Solver time -> [27]
+    # Tot time -> [28]
+    # MPC control -> [28:34]
+    # Measured torque -> [34:]
+    log_size = 41 #len(x) * 2 + 7 + len(ug[0]) * 2
+    log_array = np.empty((BUFFER_SIZE, log_size)) * np.nan
 
-        if(use_sinusoid):
-            sin_ref[0] = ee_ref[0]
-            sin_ref[1] = ee_ref[1] + amp*np.sin(omega*t)
-            sin_ref[2] = ee_ref[2] + amp*np.cos(omega*t)
-            controller.setReference(sin_ref)
-            t += dt
-            if(i%10==0):
-                rviz.setTarget(sin_ref)
-                #rviz.display(x[:nq])
+    i = 0
+    while 1 and i < BUFFER_SIZE:
+        start_time = time.perf_counter()
 
         if use_mocap == 1:
             if i % 10 == 0:
@@ -176,11 +181,10 @@ async def mpc_loop():
                 #     print('STOP THE SYSTEM ... ')
                 #     break
 
-                ee_ref[0] = new_ref[0] - 0.1        # 10 cm of safety distance
-                ee_ref[1] = new_ref[1]
-                ee_ref[2] = new_ref[2]
+                ee_ref[0] = new_ref[0] + safe_dist[0]        # 10 cm of safety distance
+                ee_ref[1] = new_ref[1] + safe_dist[1]
+                ee_ref[2] = new_ref[2] + safe_dist[2]
                 controller.setReference(ee_ref)
-                rviz.setTarget(ee_ref)
                 old_ref = new_ref.copy()
 
         try:
@@ -203,38 +207,63 @@ async def mpc_loop():
                 print("QUITTING...")
                 break
             # print("\nTarget", ee_ref)
-            if(not use_sinusoid):
-                controller.setReference(ee_ref)
-            if i % 10 == 0:
+            controller.setReference(ee_ref)
+            if VIZ_FLAG and i % 10 == 0:
                 rviz.setTarget(ee_ref)
         except:
             pass
 
-        u, sa_flag = controller.step(x)
-        x_next, _ = model.integrate(x, u)
+        if sa_flag and ia < safe_ocp.N:
+            u = u_abort[ia]
+            ia += 1
+        else:
+            u, sa_flag = controller.step(x)
+            x_next, _ = model.integrate(x, u)
 
-        # ATTENTION: skip all the checks
+            if sa_flag:
+                print(f'  ABORT at step {i}, u = {u}')
+                x_viable = controller.getLastViableState()
+                xg = np.full((safe_ocp.N + 1, model.nx), x_viable)
+                ug = np.zeros((safe_ocp.N, model.nu))
+                safe_ocp.setGuess(xg, ug) 
+                status = safe_ocp.solve(x_viable)
+                if status != 0:
+                    print('  SAFE ABORT FAILED')
+                    print('  Current controller fails:', controller.fails)
+                    np.save('timings.npy')
+                    break
+                ia = 0 
+                u_abort = safe_ocp.u_temp
+
+        # Check next state bounds and collision
+        if not model.checkStateConstraints(x_next):   
+            print('  FAIL BOUNDS')
+            print(f'\tState {i + 1} violation: {np.min(np.vstack((model.x_max - x_next, x_next - model.x_min)), axis=0)}')
+            print(f'\tCurrent controller fails: {controller.fails}')
+            break
+        # if not controller.checkCollision(x_next):
+        #     print('  FAIL COLLISION')
+        #     break
+
         q_des[:nq] = x_next[:nq]
         v_des[:nq] = x_next[nq:]
         arm.setArmCmd(q_des, v_des, tau_des)
 
+        # LOG DATA
+        log_array[i, :12] = x
+        log_array[i, 12:18] = arm.lowstate.getQ()
+        log_array[i, 18:24] = arm.lowstate.getQd()
+        log_array[i, 24:27] = ee_ref
+        log_array[i, 27] = controller.ocp_solver.get_stats("time_tot")
+        log_array[i, 29:35] = u
+        log_array[i, 35:] = arm.lowstate.getTau()[:6]
+
         x = x_next
-        if i % 10 == 0:
-            rviz.display(x[:nq])
-        end_time = time.time()
-
-        if(i<params.n_steps):
-            solver_time[i] = controller.ocp_solver.get_stats("time_tot")
-            tot_time[i] = end_time - start_time
-            i += 1
-
-        # Log data
-        q_log.append(arm.lowstate.getQ())
-        v_log.append(arm.lowstate.getQd())
-        # if last_meas is not None:
-        #     ee_log.append(last_meas.copy())
-        # if i % 10:
-        #     print(last_meas.copy())
+        if VIZ_FLAG and i % 10 == 0:
+            rviz.displayWithEESphere(x[:nq], controller.capsules)
+        end_time = time.perf_counter()
+        log_array[i, 28] = end_time - start_time
+        i += 1
 
         delta = params.dt - (end_time - start_time)
         # time.sleep(delta if delta > 0 else 0)
@@ -245,16 +274,10 @@ async def mpc_loop():
     arm.backToStart()
     arm.loopOff()
 
-    print('TIMINGS')
-    tot_time = np.asarray(tot_time[:i])
-    solver_time = np.asarray(solver_time[:i])
-    print(f'99 percentile, tot = {np.quantile(tot_time, 0.99):.3f}s, '
-        f'solver = {np.quantile(solver_time, 0.99):.3f}')
-    print(f'Max time, tot = {max(tot_time):.3f}s, '
-        f'solver = {max(solver_time):.3f}')
+    # first_nan = np.where(np.isnan(log_array))[0][0]
+    # log_array = log_array[:first_nan - 1, :]
+    np.savez_compressed(filename, log=log_array)
 
-    # Save data
-    # np.savez_compressed('data/mpc_exp.npz', q=q_log, v=v_log, ee=ee_log)
 
-asyncio.run(mpc_loop())
+asyncio.run(mpc_loop(xg, ug))
 print('Finish process')

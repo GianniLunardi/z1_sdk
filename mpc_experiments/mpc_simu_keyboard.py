@@ -1,11 +1,12 @@
 import time
 import numpy as np
+import matplotlib.pyplot as plt
 from pynput import keyboard
 import multiprocessing as mp    
-from utils import ee_ref, obstacles, RobotVisualizer
 from safe_mpc.parser import Parameters, parse_args
 from safe_mpc.abstract import AdamModel
-from safe_mpc.utils import get_ocp, get_controller
+from safe_mpc.utils import get_ocp, get_controller, ee_ref, obstacles, apply_rc_params, \
+                           capsules, capsule_pairs, RobotVisualizer, BUFFER_SIZE
 from safe_mpc.controller import SafeBackupController
 
 
@@ -26,25 +27,14 @@ def run_mpc(queue, xg, ug):
     controller.setGuess(xg, ug)
     controller.resetHorizon(params.N)
     ia, sa_flag = 0, False
-
     step_size = 0.02
-    omega = 6.28*1.5
-    amp = 0.07
-    t = 0.0
-    sin_ref = np.copy(ee_ref)
-    use_sinusoid = 0
+
+    timings = np.empty((BUFFER_SIZE, 2)) * np.nan
 
     i = 0
     while 1:
 
         start_time = time.time()
-
-        if(use_sinusoid):
-            sin_ref[0] = ee_ref[0]
-            sin_ref[1] = ee_ref[1] + amp*np.sin(omega*t)
-            sin_ref[2] = ee_ref[2] + amp*np.cos(omega*t)
-            controller.setReference(sin_ref)
-            t += params.dt
 
         try:
             k = keys.pop(0)
@@ -61,11 +51,11 @@ def run_mpc(queue, xg, ug):
             elif(k=="page_down"):   
                 ee_ref[2] -= step_size
             elif(k=="q"):
+                np.save('timings.npy', timings)
                 print("QUITTING...")
                 break
             print("\nTarget", ee_ref)
-            if(not use_sinusoid):
-                controller.setReference(ee_ref)
+            controller.setReference(ee_ref)
         except:
             pass
 
@@ -74,6 +64,8 @@ def run_mpc(queue, xg, ug):
             ia += 1
         else:
             u, sa_flag = controller.step(x)
+            print(u)
+            timings[i, 0] = controller.ocp_solver.get_stats("time_tot")
             x_next, _ = model.integrate(x, u)
 
             if sa_flag:
@@ -86,6 +78,7 @@ def run_mpc(queue, xg, ug):
                 if status != 0:
                     print('  SAFE ABORT FAILED')
                     print('  Current controller fails:', controller.fails)
+                    np.save('timings.npy')
                     break
                 ia = 0 
                 u_abort = safe_ocp.u_temp
@@ -95,32 +88,37 @@ def run_mpc(queue, xg, ug):
             print('  FAIL BOUNDS')
             print(f'\tState {i + 1} violation: {np.min(np.vstack((model.x_max - x_next, x_next - model.x_min)), axis=0)}')
             print(f'\tCurrent controller fails: {controller.fails}')
+            np.save('timings.npy', timings)
             break
         if not controller.checkCollision(x_next):
             print('  FAIL COLLISION')
+            np.save('timings.npy', timings)
             break
         
         x = x_next
 
         end_time = time.time()
+        timings[i, 1] = end_time - start_time
         delta = params.dt - (end_time - start_time)
         time.sleep(delta if delta > 0 else 0)
-        ref = sin_ref if use_sinusoid else ee_ref
         if not queue.full():
-            queue.put((x[:nq], ref)) 
+            queue.put((x[:nq], ee_ref)) 
         i += 1
 
 def run_visualizer(queue):
-    rviz = RobotVisualizer(nq)
+    rviz = RobotVisualizer(params, nq)
     rviz.display(x0[:nq])
     if params.obs_flag:
         rviz.addObstacles(obstacles)
+        for capsule in controller.capsules:
+            rviz.init_capsule(capsule)
     while 1:
         if not queue.empty():
             x, ref = queue.get()
-            rviz.display(x)
+            rviz.displayWithEESphere(x, controller.capsules)
             rviz.setTarget(ref)
         time.sleep(0.01)
+
 
 if __name__ == "__main__":
 
@@ -134,7 +132,7 @@ if __name__ == "__main__":
     model.ee_ref = ee_ref
 
     cont_name = args['controller']
-    ocp = get_ocp(cont_name, model, obstacles)
+    ocp = get_ocp(cont_name, model, obstacles, capsules, capsule_pairs)
     opti = ocp.opti
     # Options for the initial guess
     opts = {
@@ -147,9 +145,8 @@ if __name__ == "__main__":
             'ipopt.max_iter': params.nlp_max_iter
             }
     opti.solver('ipopt', opts)  
-    controller = get_controller(cont_name, model, obstacles)
-    params.solver_type = 'SQP'
-    safe_ocp = SafeBackupController(model, obstacles)
+    controller = get_controller(cont_name, model, obstacles, capsules, capsule_pairs)
+    safe_ocp = SafeBackupController(model, obstacles, capsules, capsule_pairs)
     if args['build']:
         print('*** Ready for running the MPC at the next launch ***')
         exit()
@@ -193,4 +190,24 @@ if __name__ == "__main__":
     viz_process.terminate()
     viz_process.join()
 
-    print('*** END ***')
+    print('*** MPC END ***')
+
+    # Some statistics 
+    timings = np.load('timings.npy')
+    first_nan = np.where(np.isnan(timings))[0][0]
+    solver_time = timings[:first_nan - 1, 0] * 1e3
+    tot_time = timings[:first_nan - 1, 1] * 1e3
+    
+    apply_rc_params()
+    plt.figure(figsize=(10, 8))
+    plt.boxplot([solver_time, tot_time], labels=["Solver", "Total"])
+    plt.ylabel("Time (ms)")    
+
+    plt.show()
+
+    print(f'99th percentile of solver time: {np.quantile(solver_time, 0.99)} ms')
+    print(f'99.9th percentile of solver time: {np.quantile(solver_time, 0.999)} ms')
+    print(f'Max solver time: {np.max(solver_time)} ms')
+    print(f'99th percentile of total time: {np.quantile(tot_time, 0.99)} ms')
+    print(f'99.9th percentile of total time: {np.quantile(tot_time, 0.999)} ms')
+    print(f'Max total time: {np.max(tot_time)} ms')
