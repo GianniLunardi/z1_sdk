@@ -9,7 +9,7 @@ git clone https://github.com/unitreerobotics/unitree_ros.git
 ```
 cd unitree_ws
 git clone https://github.com/unitreerobotics/unitree_ros_to_real.git
-mv unitree_ros_to_real/unitree_legged_msgs/ /src
+mv unitree_ros_to_real/unitree_legged_msgs/ src/
 ```
 - build the ROS project (you can do an alias for the source or do it by default in the bashrc) 
 ```

@@ -2,7 +2,7 @@
 
 ## Dependencies
 - `libboost-dev`
-- `libeigen-dev`
+- `libeigen3-dev`
 
 ## ROS Noetic installation
 - setup pc for accepting ros
