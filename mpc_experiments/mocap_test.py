@@ -20,7 +20,7 @@ def on_packet(packet):
     for i, body in enumerate(bodies):
         pos, _ = body
         x, y, z = pos
-        if i == 1:
+        if i == 0:
             last_meas = np.array([x,y,z]) * 1e-3
             if last_meas is not None:
                 print(last_meas)
@@ -48,7 +48,7 @@ async def main():
         await asyncio.sleep(0.01)
         # time.sleep(0.01)
 
-    np.savez_compressed('data/mocap_data.npz', pos=np.asarray(data))
+    np.savez_compressed('data/mocap_example.npz', pos=np.asarray(data))
     print('Data saved')
 
 # if __name__ == "__main__":
@@ -59,7 +59,7 @@ asyncio.run(main())
 print('Finish acquisition')
 
 import matplotlib.pyplot as plt
-data = np.load('data/mocap_data.npz')
+data = np.load('data/mocap_example.npz')
 
 print(data['pos'].shape)
 

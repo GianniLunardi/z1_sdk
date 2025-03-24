@@ -29,7 +29,7 @@ R: 5e-3                   # torque cost
 tol_x: 1e-4               # state -4
 tol_tau: 1e-6             # torque
 tol_dyn: 1e-6             # dynamics
-tol_obs: 5e-3             # obstacle tolerance -6
+tol_obs: 5e-4             # obstacle tolerance -6
 tol_nn: 1e-4              # neural network -6
 
 eps: 1e-6                 # for numerical stability in NN function 
