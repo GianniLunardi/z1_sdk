@@ -66,7 +66,6 @@ opts = {
         }
 opti.solver('ipopt', opts)  
 controller = get_controller(cont_name, model, obstacles, capsules, capsule_pairs)
-params.solver_type = 'SQP'
 safe_ocp = SafeBackupController(model, obstacles, capsules, capsule_pairs)
 if args['build']:
     print('*** Ready for running the MPC at the next launch ***')
