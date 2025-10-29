@@ -136,31 +136,31 @@ mpc_pos = log[:, :6]
 mpc_vel = log[:, 6:12]
 mpc_acc = log[:, 29:35] 
 
-# fig, ax = plt.subplots(6,1, figsize=(20, 8), sharex=True)
-# for i in range(6):
-#     ax[i].plot(t_exp, mpc_pos[:, i], label='MPC exp', c='b')
-#     ax[i].plot(t, x_log[:, i], label='MPC simu', c='r', ls='--')
-#     ax[i].set_ylabel(f'q_{i}')
-#     ax[i].legend()
-# ax[-1].set_xlabel('Time (s)')
+fig, ax = plt.subplots(6,1, figsize=(20, 8), sharex=True)
+for i in range(6):
+    ax[i].plot(t_exp, mpc_pos[:, i], label='MPC exp', c='b')
+    ax[i].plot(t, x_log[:, i], label='MPC simu', c='r', ls='--')
+    ax[i].set_ylabel(f'q_{i}')
+    ax[i].legend()
+ax[-1].set_xlabel('Time (s)')
 
-# fig, ax = plt.subplots(6,1, figsize=(20, 8), sharex=True)
-# # ax.reshape(6)
-# for i in range(6):
-#     ax[i].plot(t_exp, mpc_vel[:, i], label='MPC exp', c='b')
-#     ax[i].plot(t, x_log[:, i + 6], label='MPC simu', c='r', ls='--')
-#     ax[i].set_ylabel(f'v_{i}')
-#     ax[i].legend()
-# ax[-1].set_xlabel('Time (s)')
+fig, ax = plt.subplots(6,1, figsize=(20, 8), sharex=True)
+# ax.reshape(6)
+for i in range(6):
+    ax[i].plot(t_exp, mpc_vel[:, i], label='MPC exp', c='b')
+    ax[i].plot(t, x_log[:, i + 6], label='MPC simu', c='r', ls='--')
+    ax[i].set_ylabel(f'v_{i}')
+    ax[i].legend()
+ax[-1].set_xlabel('Time (s)')
 
-# fig, ax = plt.subplots(6, 1, figsize=(20, 8), sharex=True)
-# # ax.reshape(6)
-# for i in range(6):
-#     ax[i].plot(t_exp, mpc_acc[:, i], label='MPC exp', c='b')
-#     ax[i].plot(t, u_log[:, i], label='MPC simu', c='r', ls='--')
-#     ax[i].set_ylabel(f'a_{i}')
-#     ax[i].legend()
-# ax[-1].set_xlabel('Time (s)')
+fig, ax = plt.subplots(6, 1, figsize=(20, 8), sharex=True)
+# ax.reshape(6)
+for i in range(6):
+    ax[i].plot(t_exp, mpc_acc[:, i], label='MPC exp', c='b')
+    ax[i].plot(t, u_log[:, i], label='MPC simu', c='r', ls='--')
+    ax[i].set_ylabel(f'a_{i}')
+    ax[i].legend()
+ax[-1].set_xlabel('Time (s)')
 
 plt.figure()
 plt.plot(t, r_log)
